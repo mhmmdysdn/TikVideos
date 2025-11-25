@@ -15,8 +15,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-// Masukkan URL panjang Anda di sini
-const videoUrl = ref("http://uploadvid-service-func-123.azurewebsites.net/api/video/b9c20d0c-595c-4a82-8829-e45cbe236a3b.mp4?code=zXzGva2BQlWU6M-6yPTQv9nQ1mE_2HkTUIN5sEU4XCPFAzFue6eLyw==");
+// Panggil variabel dari .env
+const videoUrl = ref(import.meta.env.VITE_VIDEO_URL);
 
 </script>
 
