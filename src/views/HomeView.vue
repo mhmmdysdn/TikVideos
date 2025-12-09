@@ -128,6 +128,22 @@ export default defineComponent({
   object-fit: cover;
 }
 
+.video-wrapper {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  scroll-snap-align: start;
+  /* Pastikan background wrapper adalah hitam, ini akan menjadi blankspace */
+  background: black; 
+}
+
+.video-player {
+  height: 100%;
+  width: 100%;
+  /* Ganti dari 'cover' menjadi 'contain' */
+  object-fit: contain; 
+}
+
 /* CAPTION */
 .caption {
   position: absolute;
@@ -163,5 +179,22 @@ export default defineComponent({
 .bottom-nav .item {
   text-align: center;
   font-size: 14px;
+}
+
+.app {
+  /* ... (properti yang sudah ada) */
+  position: relative;
+  
+  /* --- KODE BARU/MODIFIKASI --- */
+  width: 100%;
+  max-width: 450px; /* Batasi lebar maksimum (mis. iPhone Max width) */
+  margin: 0 auto; /* Tengah-kan kontainer di tengah layar yang lebih besar */
+  /* --- END KODE BARU/MODIFIKASI --- */
+
+  height: 100vh;
+  overflow: hidden;
+  background: black;
+  color: white;
+  font-family: sans-serif;
 }
 </style>
