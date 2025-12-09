@@ -28,7 +28,7 @@
         ></video>
 
         <div class="caption">
-          <p class="username">@{{ v.uploaderId }}</p>
+          <p class="username">@{{ v.username || v.uploaderId }}</p>
           <p class="desc">{{ v.caption }}</p>
           <p class="likes-count">❤️ {{ v.likes }}</p>
         </div>

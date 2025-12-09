@@ -44,6 +44,11 @@ const uploadFile = async () => {
   const formData = new FormData();
   formData.append("video", selectedFile.value);
 
+  // Ambil username dari Local Storage
+  const myUsername = localStorage.getItem('username') || 'Anonim';
+  // Masukkan ke dalam paket data yang dikirim ke Azure
+  formData.append("username", myUsername);
+
   try {
     // Pastikan URL upload ini benar
     await axios.post(
