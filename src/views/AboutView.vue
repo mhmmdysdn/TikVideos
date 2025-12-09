@@ -30,6 +30,9 @@
 import axios from "axios";
 import { defineComponent } from "vue";
 
+const API_BASE = "https://uploadvid-service-func-123.azurewebsites.net/api";
+const API_KEY = "zXzGva2BQlWU6M-6yPTQv9nQ1mE_2HkTUIN5sEU4XCPFAzFue6eLyw==";
+
 export default defineComponent({
   data() {
     return {
@@ -38,14 +41,20 @@ export default defineComponent({
       showUpload: false,
     };
   },
+
   methods: {
     async fetchVideos() {
       try {
-        const res = await axios.get(
-          "https://uploadvid-service-func-123.azurewebsites.net/api/videos"
-        );
+        const res = await axios.get(`${API_BASE}/videos`);
 
-        this.videos = eval(res.data);
+        // Server returns array but as a string, so we parse
+        const blobUrls: string[] = eval(res.data);
+
+        // convert blob URLs to /api/video/... URLs
+        this.videos = blobUrls.map(url => {
+          const fileName = url.split("/").pop();
+          return `${API_BASE}/video/${fileName}?code=${API_KEY}`;
+        });
 
       } catch (error) {
         console.error(error);
@@ -59,37 +68,36 @@ export default defineComponent({
     },
 
     async uploadFile(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
+      const input = event.target as HTMLInputElement;
+      const file = input.files?.[0];
+      if (!file) return;
 
-  const formData = new FormData();
-  formData.append("video", file);
+      const formData = new FormData();
+      formData.append("video", file);
 
-  try {
-    await axios.post(
-      "https://uploadvid-service-func-123.azurewebsites.net/api/uploadVideo",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
+      try {
+        await axios.post(
+          `${API_BASE}/uploadVideo?code=${API_KEY}`,
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
 
-    alert("Upload success!");
-    this.showUpload = false;
-    this.fetchVideos();
+        alert("Upload success!");
+        this.showUpload = false;
+        this.fetchVideos();
 
-  } catch (error) {
-    console.error(error);
-    alert("Failed to upload.");
-  }
-}
-
+      } catch (error) {
+        console.error(error);
+        alert("Failed to upload.");
+      }
+    }
   },
+
   mounted() {
     this.fetchVideos();
   }
 });
 </script>
-
 
 <style>
 .container {
@@ -114,6 +122,7 @@ export default defineComponent({
   justify-content: center;
   align-items: center;
 }
+
 .popup-content {
   background: white;
   padding: 20px;
