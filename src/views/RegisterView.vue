@@ -42,7 +42,7 @@ export default defineComponent({
   methods: {
     async handleRegister() {
       try {
-        await axios.post('http://localhost:7071/api/register', {
+        await axios.post('https://user-service-func-123.azurewebsites.net/api/register', {
           username: this.username,
           email: this.email,
           password: this.password

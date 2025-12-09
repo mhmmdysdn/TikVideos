@@ -45,7 +45,7 @@ export default defineComponent({
     async handleLogin() {
       try {
         // Kita beritahu axios bahwa balikan datanya berbentuk LoginResponse
-        const response = await axios.post<LoginResponse>('http://localhost:7071/api/login', {
+        const response = await axios.post<LoginResponse>('https://user-service-func-123.azurewebsites.net/api/login', {
           email: this.email,
           password: this.password
         });
