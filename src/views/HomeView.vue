@@ -58,17 +58,18 @@ export default defineComponent({
     };
   },
   methods: {
-    handleLogout() {
-      // Hapus sesi
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('username');
+  handleLogout() {
+    // 1. Hapus sesi
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
 
-      // Refresh halaman ke login
-      alert("Anda telah logout.");
-      window.location.href = "/login";
-    }
-  },
+    // 2. Beri notifikasi
+    alert("Anda telah logout.");
 
+    // 3. Pindah halaman menggunakan Router Vue (Lebih mulus & aman)
+    this.$router.push('/login');
+  }
+},
   async mounted() {
     try {
       const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
