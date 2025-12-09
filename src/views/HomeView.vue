@@ -1,57 +1,54 @@
 <template>
-  <div class="app">
+  <div class="app">
 
-    <!-- HEADER -->
-    <div class="header">
-      <div class="tab active">For You</div>
-      <div class="tab">Following</div>
-    </div>
+        <div class="header">
+      <div class="tab active">For You</div>
+      <div class="tab">Following</div>
+    </div>
+    
+    <div v-if="loading" class="loading-state">Memuat feeds... ⏳</div>
+    <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
 
-    <!-- VIDEO FEED -->
-    <div class="feed">
-      <div 
-        v-for="(v, i) in videos" 
-        :key="i" 
-        class="video-wrapper"
-      >
-        <video 
-          :src="v" 
-          class="video-player"
-          autoplay 
-          muted 
-          loop 
-          playsinline
-        ></video>
+        <div v-else class="feed">
+      <div 
+        v-for="(v) in videos" 
+        :key="v.id"          class="video-wrapper"
+      >
+        <video 
+          :src="v.blobUrl"            class="video-player"
+          autoplay 
+          muted 
+          loop 
+          playsinline
+        ></video>
 
-        <!-- simple caption di kiri bawah -->
-        <div class="caption">
-          <p class="username">@creator</p>
-          <p class="desc">Video keren banget sih ini.</p>
-        </div>
-      </div>
-    </div>
+                <div class="caption">
+          <p class="username">@{{ v.uploaderId }}</p>           <p class="desc">{{ v.caption }}</p> <p class="likes-count">❤️ {{ v.likes }}</p>
+        </div>
+      </div>
+    </div>
 
-    <!-- BOTTOM NAV -->
-    <div class="bottom-nav">
-      <div class="item">Home</div>
-      <div class="item">Discover</div>
-      <div class="item">Profile</div>
-    </div>
+        <div class="bottom-nav">
+      <div class="item">Home</div>
+      <div class="item">Discover</div>
+      <div class="item">Profile</div>
+    </div>
 
-  </div>
+  </div>
 </template>
 
 <script lang="ts">
 import axios from "axios";
 import { defineComponent } from "vue";
 
-const API_BASE = "https://uploadvid-service-func-123.azurewebsites.net/api";
-const API_KEY = "zXzGva2BQlWU6M-6yPTQv9nQ1mE_2HkTUIN5sEU4XCPFAzFue6eLyw==";
+const API_BASE = "https://feedstick-service-func123.azurewebsites.net/api";
+const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
   data() {
     return {
-      videos: [] as string[],
+      videos: [] as any[], 
+      loading: true,
     };
   },
 
@@ -60,12 +57,12 @@ export default defineComponent({
       const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
       const list = res.data.videos;
 
-      this.videos = list.map((file: string) => {
-        return `${API_BASE}/video/${file}?code=${API_KEY}`;
-      });
+      this.videos = res.data.videos;
 
     } catch (err) {
       console.error("Gagal fetch videos:", err);
+    } finally {
+      this.loading = false;
     }
   }
 });
