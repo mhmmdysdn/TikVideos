@@ -5,6 +5,9 @@
       <div class="tab active">For You</div>
       <div class="tab">Following</div>
     </div>
+    <button class="logout-btn" @click="handleLogout">
+      Logout 🚪
+    </button>
 
     <div v-if="loading" class="loading-state">Memuat feeds... ⏳</div>
     <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
@@ -54,11 +57,22 @@ export default defineComponent({
       loading: true,
     };
   },
+  methods: {
+    handleLogout() {
+      // Hapus sesi
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('username');
+
+      // Refresh halaman ke login
+      alert("Anda telah logout.");
+      window.location.href = "/login";
+    }
+  },
 
   async mounted() {
     try {
       const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
-      
+
       // Ambil daftar metadata video
       const metadataList = res.data.videos;
 
@@ -87,11 +101,11 @@ export default defineComponent({
   color: white;
   font-family: sans-serif;
   position: relative;
-  
+
   /* Batasan Lebar Layar HP */
   width: 100%;
-  max-width: 450px; 
-  margin: 0 auto; 
+  max-width: 450px;
+  margin: 0 auto;
 }
 
 /* HEADER */
@@ -107,6 +121,39 @@ export default defineComponent({
   align-items: flex-end;
   padding-bottom: 10px;
   z-index: 20;
+}
+
+/* Style Khusus Tombol Logout Mengambang */
+.logout-btn {
+  position: fixed;        /* Mengunci posisi relatif terhadap layar browser */
+  top: 15px;              /* Jarak dari atas layar */
+  right: 15px;            /* Jarak dari kanan layar */
+  z-index: 9999;          /* PENTING: Memastikan tombol selalu di atas elemen lain */
+
+  background-color: #ff4d4d; /* Warna merah biar kelihatan jelas */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 15px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+  transition: transform 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: #cc0000;
+  transform: scale(1.05);
+}
+
+/* Jika tampilan mobile, sesuaikan ukurannya */
+@media (max-width: 600px) {
+  .logout-btn {
+    top: 10px;
+    right: 10px;
+    font-size: 12px;
+    padding: 5px 10px;
+  }
 }
 
 .header .tab {
