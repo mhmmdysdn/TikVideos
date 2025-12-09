@@ -1,10 +1,6 @@
 <template>
   <div class="app">
 
-    <div class="header">
-      <div class="tab active">For You</div>
-      <div class="tab">Following</div>
-    </div>
     <button class="logout-btn" @click="handleLogout">
       Logout 🚪
     </button>
@@ -13,30 +9,32 @@
     <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
 
     <div v-else class="feed">
-      <div
-        v-for="(v) in videos"
-        :key="v.id"
-        class="video-wrapper"
-      >
+      <div v-for="(v) in videos" :key="v.id" class="video-wrapper">
         <video
           :src="v.videoSrc"
           class="video-player"
-          autoplay
-          muted
-          loop
-          playsinline
+          autoplay muted loop playsinline
         ></video>
 
         <div class="caption">
           <p class="username">@{{ v.username || v.uploaderId }}</p>
-          <p class="desc">{{ v.caption }}</p>
-          <p class="likes-count">❤️ {{ v.likes }}</p>
+
+          <p class="desc">{{ v.caption || 'Tidak ada caption' }}</p>
+
+          <div
+            class="like-btn"
+            @click="handleLike(v)"
+            :class="{ 'is-liked': v.likedByMe }"
+          >
+            <span class="heart-icon">❤️</span>
+            <span class="count">{{ v.likes }}</span>
+          </div>
+
         </div>
       </div>
     </div>
 
     <div class="bottom-nav">
-
       <div class="item active" @click="refreshHome">
         <span class="icon">🏠</span>
         <span class="label">Home</span>
@@ -52,20 +50,21 @@
         <span class="icon">👤</span>
         <span class="label">Profile</span>
       </div>
-
     </div>
 
   </div>
 </template>
+
 <script lang="ts">
 import axios from "axios";
 import { defineComponent } from "vue";
 
-const API_BASE = "https://feedstick-service-func123.azurewebsites.net/api";
-const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
+// URL SERVICE VIDEO & API KEY (Gunakan API Key yang Valid)
+const VIDEO_SERVICE_URL = "https://uploadvid-service-func-123.azurewebsites.net/api";
+const API_KEY = "z3K8nxRupBSbrGLHbWE-tUpb28V1gqeb5gGzbvnJKR-kAzFub9Kbuw==";
 
 export default defineComponent({
-  name: "HomeView", // Praktik yang baik: beri nama komponen
+  name: "HomeView",
   data() {
     return {
       videos: [] as any[],
@@ -80,20 +79,68 @@ export default defineComponent({
       this.$router.push('/login');
     },
 
-    // --- PERBAIKAN DI SINI ---
     refreshHome() {
-      // Kita gunakan window.location.reload() agar halaman benar-benar segar
       window.location.reload();
+    },
+
+    // --- LOGIKA LIKE VIDEO (BARU) ---
+    async handleLike(video: any) {
+      // 1. Cek Login
+      const myUserId = localStorage.getItem('username'); // Menggunakan username sebagai ID sementara
+      if (!myUserId) {
+        alert("Silakan login terlebih dahulu!");
+        this.$router.push('/login');
+        return;
+      }
+
+      // 2. Optimistic Update (Ubah UI duluan biar responsif)
+      const originalLikes = video.likes;
+      const wasLiked = video.likedByMe;
+
+      if (video.likedByMe) {
+        // Jika sudah like -> Jadi Unlike
+        video.likes--;
+        video.likedByMe = false;
+      } else {
+        // Jika belum like -> Jadi Like
+        video.likes++;
+        video.likedByMe = true;
+      }
+
+      // 3. Kirim Request ke Backend
+      try {
+        await axios.post(`${VIDEO_SERVICE_URL}/likeVideo?code=${API_KEY}`, {
+          videoId: video.id,
+          userId: myUserId
+        });
+        // Sukses? Biarkan saja.
+      } catch (error) {
+        console.error("Gagal like:", error);
+        // Rollback jika gagal
+        video.likes = originalLikes;
+        video.likedByMe = wasLiked;
+        alert("Gagal melakukan like, cek koneksi.");
+      }
     }
   },
+
   async mounted() {
+    // Cek apakah user sudah login
+    const myUserId = localStorage.getItem('username');
+
     try {
-      const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
+      // Ambil daftar video
+      const res = await axios.get(`${VIDEO_SERVICE_URL}/videos?code=${API_KEY}`);
       const metadataList = res.data.videos;
 
+      // Mapping data
       this.videos = metadataList.map((v: any) => ({
           ...v,
-          videoSrc: `${API_BASE}/video/${v.fileName}?code=${API_KEY}`,
+          videoSrc: `${VIDEO_SERVICE_URL}/video/${v.fileName}?code=${API_KEY}`,
+
+          // Cek status like user saat ini
+          // Backend mengirim array 'likedBy', kita cek apakah ID kita ada di situ
+          likedByMe: v.likedBy && myUserId ? v.likedBy.includes(myUserId) : false
       }));
 
     } catch (err) {
@@ -105,45 +152,27 @@ export default defineComponent({
 });
 </script>
 
-<style>
-/* --- APP CONTAINER & LAYOUT (Dibersihkan dari duplikasi .app) --- */
+<style scoped>
+/* APP CONTAINER */
 .app {
-  height: 100vh;
-  overflow: hidden;
   background: black;
   color: white;
-  font-family: sans-serif;
-  position: relative;
-
-  /* Batasan Lebar Layar HP */
+  height: 100vh;
   width: 100%;
   max-width: 450px;
   margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  font-family: sans-serif;
 }
 
-/* HEADER */
-.header {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  height: 55px;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  align-items: flex-end;
-  padding-bottom: 10px;
-  z-index: 20;
-}
-
-/* Style Khusus Tombol Logout Mengambang */
+/* LOGOUT BUTTON */
 .logout-btn {
-  position: fixed;        /* Mengunci posisi relatif terhadap layar browser */
-  top: 15px;              /* Jarak dari atas layar */
-  right: 15px;            /* Jarak dari kanan layar */
-  z-index: 9999;          /* PENTING: Memastikan tombol selalu di atas elemen lain */
-
-  background-color: #ff4d4d; /* Warna merah biar kelihatan jelas */
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 999;
+  background-color: #ff4d4d;
   color: white;
   border: none;
   border-radius: 20px;
@@ -151,84 +180,89 @@ export default defineComponent({
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-  transition: transform 0.2s;
 }
 
-.logout-btn:hover {
-  background-color: #cc0000;
-  transform: scale(1.05);
-}
-
-/* Jika tampilan mobile, sesuaikan ukurannya */
-@media (max-width: 600px) {
-  .logout-btn {
-    top: 10px;
-    right: 10px;
-    font-size: 12px;
-    padding: 5px 10px;
-  }
-}
-
-.header .tab {
-  opacity: 0.5;
-  font-size: 16px;
-}
-
-.header .active {
-  opacity: 1;
-  font-weight: bold;
-}
-
-/* FEED CONTAINER */
+/* FEED & VIDEO */
 .feed {
   height: 100vh;
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
-  margin-top: -55px; /* Menggeser konten ke atas di bawah header */
-  padding-top: 55px;
 }
 
-/* VIDEO WRAPPER (Dibersihkan dari duplikasi) */
 .video-wrapper {
   position: relative;
   height: 100vh;
   width: 100%;
   scroll-snap-align: start;
-  background: black; /* Latar belakang hitam untuk blankspace */
+  background: black;
 }
 
-/* VIDEO PLAYER (Dibersihkan dari duplikasi object-fit) */
 .video-player {
   height: 100%;
   width: 100%;
-  object-fit: contain; /* Memastikan video terlihat penuh, menyisakan blankspace hitam */
+  object-fit: contain;
 }
 
-/* CAPTION */
+/* CAPTION AREA */
 .caption {
   position: absolute;
-  bottom: 80px;
+  bottom: 80px; /* Di atas navbar */
   left: 20px;
+  right: 60px; /* Beri ruang di kanan (opsional, untuk tombol aksi lain nanti) */
   z-index: 10;
+  text-align: left;
 }
 
 .caption .username {
   font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 5px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 .caption .desc {
-  margin-top: 5px;
   font-size: 14px;
-  opacity: 0.85;
-  max-width: 250px;
+  opacity: 0.9;
+  margin-bottom: 10px;
+  line-height: 1.4;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
-.caption .likes-count {
+/* TOMBOL LIKE BARU */
+.like-btn {
+  display: inline-flex; /* Agar menyatu dengan teks atau di bawahnya */
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: transform 0.1s;
+}
+
+.like-btn:active {
+  transform: scale(0.85);
+}
+
+.heart-icon {
+  font-size: 28px;
+  filter: grayscale(100%) brightness(150%); /* Abu-abu terang */
+  transition: all 0.3s;
+}
+
+.count {
+  font-size: 12px;
   font-weight: bold;
-  margin-top: 5px;
+  margin-top: 2px;
+  text-shadow: 1px 1px 2px black;
 }
 
-/* --- BOTTOM NAVIGATION --- */
+/* EFEK SAAT DI-LIKE */
+.like-btn.is-liked .heart-icon {
+  filter: grayscale(0%); /* Warna asli */
+  text-shadow: 0 0 15px rgba(255, 0, 0, 0.8); /* Glowing merah */
+  transform: scale(1.1);
+}
+
+/* NAVIGASI BAWAH */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -236,80 +270,51 @@ export default defineComponent({
   transform: translateX(-50%);
   width: 100%;
   max-width: 450px;
-  height: 60px; /* Tinggi navbar standar */
-
-  background: #000000; /* Hitam pekat */
-  border-top: 1px solid #222; /* Garis pemisah halus */
-
+  height: 60px;
+  background: #000;
+  border-top: 1px solid #333;
   display: flex;
-  justify-content: space-between; /* Jarak antar item merata */
-  padding: 0 30px; /* Padding kiri kanan agar tidak mepet pinggir */
+  justify-content: space-around;
   align-items: center;
-  box-sizing: border-box;
   z-index: 100;
 }
 
-/* Style Umum untuk Item (Home & Profile) */
 .bottom-nav .item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #666; /* Warna abu-abu saat tidak aktif */
-  transition: all 0.2s ease;
-  width: 50px; /* Area klik yang pas */
+  color: #666;
+  width: 50px;
 }
 
-.bottom-nav .item .icon {
-  font-size: 20px;
-  margin-bottom: 2px;
-}
-
-.bottom-nav .item .label {
-  font-size: 10px;
-  font-weight: 500;
-}
-
-/* --- STATE ACTIVE (Untuk Home) --- */
 .bottom-nav .item.active {
-  color: #ffffff; /* Putih terang saat aktif */
-}
-.bottom-nav .item.active .icon {
-  transform: scale(1.1); /* Sedikit membesar */
+  color: #fff;
 }
 
-/* --- TOMBOL UPLOAD SPESIAL (Tengah) --- */
+/* TOMBOL UPLOAD SPESIAL */
 .upload-container {
-  /* Mengambil ruang tapi tidak mengubah layout flex */
-  transform: translateY(-5px); /* Sedikit naik ke atas */
+  transform: translateY(-5px);
 }
-
 .upload-btn {
   width: 45px;
   height: 30px;
-  background: linear-gradient(90deg, #00f2ea, #ff0050); /* Efek warna 'Glitch' ala TikTok */
-  border-radius: 8px; /* Kotak dengan sudut tumpul */
+  background: linear-gradient(90deg, #00f2ea, #ff0050);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid white; /* Border putih agar kontras dengan background hitam */
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-  transition: transform 0.1s;
+  border: 2px solid white;
 }
-
 .upload-btn span {
-  color: black; /* Ikon plus warna hitam agar jelas */
+  color: black;
   font-weight: 900;
   font-size: 18px;
   line-height: 1;
 }
 
-.upload-container:active .upload-btn {
-  transform: scale(0.95); /* Efek tekan saat diklik */
-}
-
-/* Wajib: LOADING STATE */
+/* LOADING STATE */
 .loading-state {
     position: fixed;
     top: 50%;
