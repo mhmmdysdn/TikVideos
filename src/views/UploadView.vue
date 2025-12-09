@@ -4,7 +4,8 @@
     <div class="header-top">
       <button class="close-btn" @click="$router.go(-1)">✕</button>
       <h3>Posting Baru</h3>
-      <div style="width: 24px"></div> </div>
+      <div style="width: 24px"></div>
+    </div>
 
     <div class="content-area">
 
@@ -63,6 +64,10 @@ import { ref, onUnmounted } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 
+// KUNCI AKSES AZURE FUNCTION (PENTING!)
+const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
+const API_URL = "https://uploadvid-service-func-123.azurewebsites.net/api/uploadVideo";
+
 const router = useRouter();
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
@@ -85,7 +90,7 @@ const handleFileChange = (event: Event) => {
     selectedFile.value = file;
 
     // Buat URL sementara untuk preview video
-    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value); // Bersihkan memori lama
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
     previewUrl.value = URL.createObjectURL(file);
 
     message.value = '';
@@ -107,7 +112,7 @@ const uploadFile = async () => {
   // 1. Masukkan File
   formData.append("video", selectedFile.value);
 
-  // 2. Masukkan Caption (Pastikan Backend Anda menerima field 'caption')
+  // 2. Masukkan Caption
   formData.append("caption", caption.value);
 
   // 3. Masukkan Username
@@ -115,13 +120,15 @@ const uploadFile = async () => {
   formData.append("username", myUsername);
 
   try {
+    // REQUEST KE AZURE FUNCTION
+    // Perhatikan: ?code=${API_KEY} wajib ada di URL!
     await axios.post(
-      "https://uploadvid-service-func-123.azurewebsites.net/api/uploadVideo",
+      `${API_URL}?code=${API_KEY}`,
       formData,
       {
         headers: {
           "Content-Type": "multipart/form-data",
-          "x-user-id": myUsername // Header Wajib
+          "x-user-id": myUsername // Wajib untuk Backend Python Anda
         }
       }
     );
@@ -140,7 +147,9 @@ const uploadFile = async () => {
 
   } catch (error: any) {
     console.error(error);
-    message.value = error.response?.data?.error || "Gagal mengupload video.";
+    // Tampilkan pesan error detail dari server jika ada
+    const errorMsg = error.response?.data?.error || error.message || "Gagal mengupload video.";
+    message.value = `Gagal: ${errorMsg}`;
     isSuccess.value = false;
   } finally {
     isUploading.value = false;
