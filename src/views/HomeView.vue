@@ -36,9 +36,23 @@
     </div>
 
     <div class="bottom-nav">
-      <div class="item">Home</div>
-      <div class="item">Discover</div>
-      <div class="item">Profile</div>
+
+      <div class="item active" @click="refreshHome">
+        <span class="icon">🏠</span>
+        <span class="label">Home</span>
+      </div>
+
+      <div class="item upload-container" @click="$router.push('/upload')">
+        <div class="upload-btn">
+          <span>➕</span>
+        </div>
+      </div>
+
+      <div class="item">
+        <span class="icon">👤</span>
+        <span class="label">Profile</span>
+      </div>
+
     </div>
 
   </div>
@@ -51,6 +65,7 @@ const API_BASE = "https://feedstick-service-func123.azurewebsites.net/api";
 const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
+  name: "HomeView", // Praktik yang baik: beri nama komponen
   data() {
     return {
       videos: [] as any[],
@@ -58,29 +73,26 @@ export default defineComponent({
     };
   },
   methods: {
-  handleLogout() {
-    // 1. Hapus sesi
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('username');
+    handleLogout() {
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('username');
+      alert("Anda telah logout.");
+      this.$router.push('/login');
+    },
 
-    // 2. Beri notifikasi
-    alert("Anda telah logout.");
-
-    // 3. Pindah halaman menggunakan Router Vue (Lebih mulus & aman)
-    this.$router.push('/login');
-  }
-},
+    // --- PERBAIKAN DI SINI ---
+    refreshHome() {
+      // Kita gunakan window.location.reload() agar halaman benar-benar segar
+      window.location.reload();
+    }
+  },
   async mounted() {
     try {
       const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
-
-      // Ambil daftar metadata video
       const metadataList = res.data.videos;
 
-      // ❗ PERBAIKAN: Mapping ulang data untuk membuat URL Azure Function
       this.videos = metadataList.map((v: any) => ({
-          ...v, // Salin semua metadata (id, uploaderId, likes, caption, dll.)
-          // 🟢 Gunakan endpoint Azure Function 'video'
+          ...v,
           videoSrc: `${API_BASE}/video/${v.fileName}?code=${API_KEY}`,
       }));
 
@@ -216,22 +228,85 @@ export default defineComponent({
   margin-top: 5px;
 }
 
-/* BOTTOM NAV */
+/* --- BOTTOM NAVIGATION --- */
 .bottom-nav {
   position: fixed;
   bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
-  height: 60px;
-  background: rgba(0,0,0,0.4);
+  max-width: 450px;
+  height: 60px; /* Tinggi navbar standar */
+
+  background: #000000; /* Hitam pekat */
+  border-top: 1px solid #222; /* Garis pemisah halus */
+
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between; /* Jarak antar item merata */
+  padding: 0 30px; /* Padding kiri kanan agar tidak mepet pinggir */
   align-items: center;
-  z-index: 20;
+  box-sizing: border-box;
+  z-index: 100;
 }
 
+/* Style Umum untuk Item (Home & Profile) */
 .bottom-nav .item {
-  text-align: center;
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666; /* Warna abu-abu saat tidak aktif */
+  transition: all 0.2s ease;
+  width: 50px; /* Area klik yang pas */
+}
+
+.bottom-nav .item .icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.bottom-nav .item .label {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* --- STATE ACTIVE (Untuk Home) --- */
+.bottom-nav .item.active {
+  color: #ffffff; /* Putih terang saat aktif */
+}
+.bottom-nav .item.active .icon {
+  transform: scale(1.1); /* Sedikit membesar */
+}
+
+/* --- TOMBOL UPLOAD SPESIAL (Tengah) --- */
+.upload-container {
+  /* Mengambil ruang tapi tidak mengubah layout flex */
+  transform: translateY(-5px); /* Sedikit naik ke atas */
+}
+
+.upload-btn {
+  width: 45px;
+  height: 30px;
+  background: linear-gradient(90deg, #00f2ea, #ff0050); /* Efek warna 'Glitch' ala TikTok */
+  border-radius: 8px; /* Kotak dengan sudut tumpul */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white; /* Border putih agar kontras dengan background hitam */
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  transition: transform 0.1s;
+}
+
+.upload-btn span {
+  color: black; /* Ikon plus warna hitam agar jelas */
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.upload-container:active .upload-btn {
+  transform: scale(0.95); /* Efek tekan saat diklik */
 }
 
 /* Wajib: LOADING STATE */
