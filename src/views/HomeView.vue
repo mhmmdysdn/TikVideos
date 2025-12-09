@@ -1,53 +1,58 @@
 <template>
-  <div class="app">
+  <div class="app">
 
-        <div class="header">
-      <div class="tab active">For You</div>
-      <div class="tab">Following</div>
-    </div>
-    
+    <div class="header">
+      <div class="tab active">For You</div>
+      <div class="tab">Following</div>
+    </div>
+
     <div v-if="loading" class="loading-state">Memuat feeds... ⏳</div>
     <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
 
-        <div v-else class="feed">
-      <div 
-        v-for="(v) in videos" 
-        :key="v.id"          class="video-wrapper"
-      >
-        <video 
-          :src="v.blobUrl"            class="video-player"
-          autoplay 
-          muted 
-          loop 
-          playsinline
-        ></video>
+    <div v-else class="feed">
+      <div
+        v-for="(v) in videos"
+        :key="v.id"
+        class="video-wrapper"
+      >
+        <video
+          :src="v.blobUrl"
+          class="video-player"
+          autoplay
+          muted
+          loop
+          playsinline
+        ></video>
 
-                <div class="caption">
-          <p class="username">@{{ v.uploaderId }}</p>           <p class="desc">{{ v.caption }}</p> <p class="likes-count">❤️ {{ v.likes }}</p>
-        </div>
-      </div>
-    </div>
+        <div class="caption">
+          <p class="username">@{{ v.uploaderId }}</p>
+          <p class="desc">{{ v.caption }}</p>
+          <p class="likes-count">❤️ {{ v.likes }}</p>
+        </div>
+      </div>
+    </div>
 
-        <div class="bottom-nav">
-      <div class="item">Home</div>
-      <div class="item">Discover</div>
-      <div class="item">Profile</div>
-    </div>
+    <div class="bottom-nav">
+      <div class="item">Home</div>
+      <div class="item">Discover</div>
+      <div class="item">Profile</div>
+    </div>
 
-  </div>
+  </div>
 </template>
 
 <script lang="ts">
 import axios from "axios";
 import { defineComponent } from "vue";
 
+// Ganti ini dengan data Azure Function Anda
 const API_BASE = "https://feedstick-service-func123.azurewebsites.net/api";
 const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
   data() {
     return {
-      videos: [] as any[], 
+      videos: [] as any[],
       loading: true,
     };
   },
@@ -55,8 +60,8 @@ export default defineComponent({
   async mounted() {
     try {
       const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
-      const list = res.data.videos;
-
+      
+      // Menghapus 'const list = res.data.videos;' yang tidak terpakai
       this.videos = res.data.videos;
 
     } catch (err) {
@@ -69,6 +74,7 @@ export default defineComponent({
 </script>
 
 <style>
+/* --- APP CONTAINER & LAYOUT (Dibersihkan dari duplikasi .app) --- */
 .app {
   height: 100vh;
   overflow: hidden;
@@ -76,6 +82,11 @@ export default defineComponent({
   color: white;
   font-family: sans-serif;
   position: relative;
+  
+  /* Batasan Lebar Layar HP */
+  width: 100%;
+  max-width: 450px; 
+  margin: 0 auto; 
 }
 
 /* HEADER */
@@ -103,42 +114,29 @@ export default defineComponent({
   font-weight: bold;
 }
 
-/* FEED */
+/* FEED CONTAINER */
 .feed {
   height: 100vh;
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
-  margin-top: -55px;
+  margin-top: -55px; /* Menggeser konten ke atas di bawah header */
   padding-top: 55px;
 }
 
+/* VIDEO WRAPPER (Dibersihkan dari duplikasi) */
 .video-wrapper {
   position: relative;
   height: 100vh;
   width: 100%;
   scroll-snap-align: start;
+  background: black; /* Latar belakang hitam untuk blankspace */
 }
 
+/* VIDEO PLAYER (Dibersihkan dari duplikasi object-fit) */
 .video-player {
   height: 100%;
   width: 100%;
-  object-fit: cover;
-}
-
-.video-wrapper {
-  position: relative;
-  height: 100vh;
-  width: 100%;
-  scroll-snap-align: start;
-  /* Pastikan background wrapper adalah hitam, ini akan menjadi blankspace */
-  background: black; 
-}
-
-.video-player {
-  height: 100%;
-  width: 100%;
-  /* Ganti dari 'cover' menjadi 'contain' */
-  object-fit: contain; 
+  object-fit: contain; /* Memastikan video terlihat penuh, menyisakan blankspace hitam */
 }
 
 /* CAPTION */
@@ -160,6 +158,11 @@ export default defineComponent({
   max-width: 250px;
 }
 
+.caption .likes-count {
+  font-weight: bold;
+  margin-top: 5px;
+}
+
 /* BOTTOM NAV */
 .bottom-nav {
   position: fixed;
@@ -178,20 +181,14 @@ export default defineComponent({
   font-size: 14px;
 }
 
-.app {
-  /* ... (properti yang sudah ada) */
-  position: relative;
-  
-  /* --- KODE BARU/MODIFIKASI --- */
-  width: 100%;
-  max-width: 450px; /* Batasi lebar maksimum (mis. iPhone Max width) */
-  margin: 0 auto; /* Tengah-kan kontainer di tengah layar yang lebih besar */
-  /* --- END KODE BARU/MODIFIKASI --- */
-
-  height: 100vh;
-  overflow: hidden;
-  background: black;
-  color: white;
-  font-family: sans-serif;
+/* Wajib: LOADING STATE */
+.loading-state {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 18px;
+    z-index: 30;
 }
 </style>
