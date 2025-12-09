@@ -16,7 +16,7 @@
         class="video-wrapper"
       >
         <video
-          :src="v.blobUrl"
+          :src="v.videoSrc"
           class="video-player"
           autoplay
           muted
@@ -40,12 +40,10 @@
 
   </div>
 </template>
-
 <script lang="ts">
 import axios from "axios";
 import { defineComponent } from "vue";
 
-// Ganti ini dengan data Azure Function Anda
 const API_BASE = "https://feedstick-service-func123.azurewebsites.net/api";
 const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
@@ -61,8 +59,15 @@ export default defineComponent({
     try {
       const res = await axios.get(`${API_BASE}/videos?code=${API_KEY}`);
       
-      // Menghapus 'const list = res.data.videos;' yang tidak terpakai
-      this.videos = res.data.videos;
+      // Ambil daftar metadata video
+      const metadataList = res.data.videos;
+
+      // ❗ PERBAIKAN: Mapping ulang data untuk membuat URL Azure Function
+      this.videos = metadataList.map((v: any) => ({
+          ...v, // Salin semua metadata (id, uploaderId, likes, caption, dll.)
+          // 🟢 Gunakan endpoint Azure Function 'video'
+          videoSrc: `${API_BASE}/video/${v.fileName}?code=${API_KEY}`,
+      }));
 
     } catch (err) {
       console.error("Gagal fetch videos:", err);
