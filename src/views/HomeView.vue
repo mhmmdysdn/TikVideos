@@ -61,7 +61,7 @@ import { defineComponent } from "vue";
 
 // URL SERVICE VIDEO & API KEY (Gunakan API Key yang Valid)
 const VIDEO_SERVICE_URL = "https://uploadvid-service-func-123.azurewebsites.net/api";
-const API_KEY = "z3K8nxRupBSbrGLHbWE-tUpb28V1gqeb5gGzbvnJKR-kAzFub9Kbuw==";
+const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
   name: "HomeView",
