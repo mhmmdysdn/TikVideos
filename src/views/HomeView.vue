@@ -18,7 +18,6 @@
 
         <div class="caption">
           <p class="username">@{{ v.username || v.uploaderId }}</p>
-
           <p class="desc">{{ v.caption || 'Tidak ada caption' }}</p>
 
           <div
@@ -29,7 +28,6 @@
             <span class="heart-icon">❤️</span>
             <span class="count">{{ v.likes }}</span>
           </div>
-
         </div>
       </div>
     </div>
@@ -59,8 +57,15 @@
 import axios from "axios";
 import { defineComponent } from "vue";
 
-// URL SERVICE VIDEO & API KEY (Gunakan API Key yang Valid)
-const VIDEO_SERVICE_URL = "https://uploadvid-service-func-123.azurewebsites.net/api";
+// --- KONFIGURASI URL (PENTING!) ---
+
+// 1. Service untuk MENGAMBIL Video (Feedstick)
+const FEED_SERVICE_URL = "https://feedstick-service-func123.azurewebsites.net/api";
+
+// 2. Service untuk LIKE Video (Uploadvid - karena tadi kita taruh fungsi Like di sini)
+const UPLOAD_SERVICE_URL = "https://uploadvid-service-func-123.azurewebsites.net/api";
+
+// API Key (Jika Feedstick pakai Auth Level Function, ganti key ini dengan key Feedstick)
 const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
@@ -83,63 +88,53 @@ export default defineComponent({
       window.location.reload();
     },
 
-    // --- LOGIKA LIKE VIDEO (BARU) ---
     async handleLike(video: any) {
-      // 1. Cek Login
-      const myUserId = localStorage.getItem('username'); // Menggunakan username sebagai ID sementara
+      const myUserId = localStorage.getItem('username');
       if (!myUserId) {
         alert("Silakan login terlebih dahulu!");
         this.$router.push('/login');
         return;
       }
 
-      // 2. Optimistic Update (Ubah UI duluan biar responsif)
+      // Optimistic Update
       const originalLikes = video.likes;
       const wasLiked = video.likedByMe;
 
       if (video.likedByMe) {
-        // Jika sudah like -> Jadi Unlike
         video.likes--;
         video.likedByMe = false;
       } else {
-        // Jika belum like -> Jadi Like
         video.likes++;
         video.likedByMe = true;
       }
 
-      // 3. Kirim Request ke Backend
       try {
-        await axios.post(`${VIDEO_SERVICE_URL}/likeVideo?code=${API_KEY}`, {
+        // PERHATIKAN: Like dikirim ke UPLOAD_SERVICE_URL
+        await axios.post(`${UPLOAD_SERVICE_URL}/likeVideo?code=${API_KEY}`, {
           videoId: video.id,
           userId: myUserId
         });
-        // Sukses? Biarkan saja.
       } catch (error) {
         console.error("Gagal like:", error);
-        // Rollback jika gagal
         video.likes = originalLikes;
         video.likedByMe = wasLiked;
-        alert("Gagal melakukan like, cek koneksi.");
+        alert("Gagal melakukan like.");
       }
     }
   },
 
   async mounted() {
-    // Cek apakah user sudah login
     const myUserId = localStorage.getItem('username');
 
     try {
-      // Ambil daftar video
-      const res = await axios.get(`${VIDEO_SERVICE_URL}/videos?code=${API_KEY}`);
+      // PERHATIKAN: Fetch data dari FEED_SERVICE_URL
+      const res = await axios.get(`${FEED_SERVICE_URL}/videos?code=${API_KEY}`);
       const metadataList = res.data.videos;
 
-      // Mapping data
       this.videos = metadataList.map((v: any) => ({
           ...v,
-          videoSrc: `${VIDEO_SERVICE_URL}/video/${v.fileName}?code=${API_KEY}`,
-
-          // Cek status like user saat ini
-          // Backend mengirim array 'likedBy', kita cek apakah ID kita ada di situ
+          // Video source juga dari Feedstick
+          videoSrc: `${FEED_SERVICE_URL}/video/${v.fileName}?code=${API_KEY}`,
           likedByMe: v.likedBy && myUserId ? v.likedBy.includes(myUserId) : false
       }));
 
@@ -206,9 +201,9 @@ export default defineComponent({
 /* CAPTION AREA */
 .caption {
   position: absolute;
-  bottom: 80px; /* Di atas navbar */
+  bottom: 80px;
   left: 20px;
-  right: 60px; /* Beri ruang di kanan (opsional, untuk tombol aksi lain nanti) */
+  right: 60px;
   z-index: 10;
   text-align: left;
 }
@@ -228,9 +223,9 @@ export default defineComponent({
   text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
-/* TOMBOL LIKE BARU */
+/* LIKE BUTTON */
 .like-btn {
-  display: inline-flex; /* Agar menyatu dengan teks atau di bawahnya */
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   cursor: pointer;
@@ -244,7 +239,7 @@ export default defineComponent({
 
 .heart-icon {
   font-size: 28px;
-  filter: grayscale(100%) brightness(150%); /* Abu-abu terang */
+  filter: grayscale(100%) brightness(150%);
   transition: all 0.3s;
 }
 
@@ -255,10 +250,9 @@ export default defineComponent({
   text-shadow: 1px 1px 2px black;
 }
 
-/* EFEK SAAT DI-LIKE */
 .like-btn.is-liked .heart-icon {
-  filter: grayscale(0%); /* Warna asli */
-  text-shadow: 0 0 15px rgba(255, 0, 0, 0.8); /* Glowing merah */
+  filter: grayscale(0%);
+  text-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
   transform: scale(1.1);
 }
 
@@ -293,7 +287,6 @@ export default defineComponent({
   color: #fff;
 }
 
-/* TOMBOL UPLOAD SPESIAL */
 .upload-container {
   transform: translateY(-5px);
 }
@@ -314,7 +307,6 @@ export default defineComponent({
   line-height: 1;
 }
 
-/* LOADING STATE */
 .loading-state {
     position: fixed;
     top: 50%;
