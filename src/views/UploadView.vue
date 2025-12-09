@@ -65,7 +65,7 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 
 // KUNCI AKSES AZURE FUNCTION (PENTING!)
-const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
+const API_KEY = "z3K8nxRupBSbrGLHbWE-tUpb28V1gqeb5gGzbvnJKR-kAzFub9Kbuw==";
 const API_URL = "https://uploadvid-service-func-123.azurewebsites.net/api/uploadVideo";
 
 const router = useRouter();
