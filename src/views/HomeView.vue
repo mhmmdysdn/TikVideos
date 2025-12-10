@@ -73,7 +73,7 @@ export default defineComponent({
       videos: [] as any[],
       loading: true,
       // Array untuk menyimpan elemen video fisik agar bisa dikontrol scroll
-      videoRefs: [] as HTMLVideoElement[],
+      videoRefs: [] as any[],
       observer: null as IntersectionObserver | null
     };
   },
