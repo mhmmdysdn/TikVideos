@@ -5,6 +5,7 @@ import ProfileView from '../views/ProfileView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import VideoDetailView from '../views/VideoDetailView.vue'
+import VideoAnalyticsDashboard from '../views/VideoAnalyticsDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,11 @@ const router = createRouter({
       name: 'profile',
       component: ProfileView,
       meta: { requiresAuth: true } // Halaman ini juga wajib login
+    },
+    {
+      path: '/tranding',
+      name: 'VideoAnalyticsDashboard',
+      component: VideoAnalyticsDashboard,
     },
     {
       path: '/login',
