@@ -1,10 +1,5 @@
 <template>
   <div class="app">
-
-    <button class="logout-btn" @click="handleLogout">
-      Logout 🚪
-    </button>
-
     <div v-if="loading" class="loading-state">Memuat feeds... ⏳</div>
     <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
 
@@ -18,7 +13,7 @@
 
         <div class="caption">
           <p class="username">@{{ v.username || v.uploaderId }}</p>
-          <p class="desc">{{ v.caption || 'Tidak ada caption' }}</p>
+          <p class="desc">{{ v.caption || '' }}</p>
 
           <div
             class="like-btn"
@@ -44,7 +39,7 @@
         </div>
       </div>
 
-      <div class="item">
+      <div class="item" @click="$router.push('/profile')">
         <span class="icon">👤</span>
         <span class="label">Profile</span>
       </div>
@@ -77,13 +72,6 @@ export default defineComponent({
     };
   },
   methods: {
-    handleLogout() {
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('username');
-      alert("Anda telah logout.");
-      this.$router.push('/login');
-    },
-
     refreshHome() {
       window.location.reload();
     },
@@ -160,23 +148,6 @@ export default defineComponent({
   overflow: hidden;
   font-family: sans-serif;
 }
-
-/* LOGOUT BUTTON */
-.logout-btn {
-  position: fixed;
-  top: 15px;
-  right: 15px;
-  z-index: 999;
-  background-color: #ff4d4d;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 15px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-}
-
 /* FEED & VIDEO */
 .feed {
   height: 100vh;
