@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import UploadView from '../views/UploadView.vue'
-// 1. Import view baru yang sudah kamu buat
+import ProfileView from '../views/ProfileView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 
@@ -19,6 +19,12 @@ const router = createRouter({
       path: '/upload',
       name: 'upload',
       component: UploadView,
+      meta: { requiresAuth: true } // Halaman ini juga wajib login
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: ProfileView,
       meta: { requiresAuth: true } // Halaman ini juga wajib login
     },
     {
