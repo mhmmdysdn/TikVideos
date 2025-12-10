@@ -1,14 +1,23 @@
 <template>
   <div class="app">
+
+    <button class="logout-btn" @click="handleLogout">
+      Logout 🚪
+    </button>
+
     <div v-if="loading" class="loading-state">Memuat feeds... ⏳</div>
     <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
 
     <div v-else class="feed">
-      <div v-for="(v) in videos" :key="v.id" class="video-wrapper">
+      <div v-for="(v, index) in videos" :key="v.id" class="video-wrapper">
+
         <video
+          :ref="(el) => { if(el) videoRefs[index] = el }"
           :src="v.videoSrc"
           class="video-player"
-          autoplay muted loop playsinline
+          loop
+          playsinline
+          @click="togglePlay($event)"
         ></video>
 
         <div class="caption">
@@ -52,15 +61,9 @@
 import axios from "axios";
 import { defineComponent } from "vue";
 
-// --- KONFIGURASI URL (PENTING!) ---
-
-// 1. Service untuk MENGAMBIL Video (Feedstick)
+// --- KONFIGURASI URL ---
 const FEED_SERVICE_URL = "https://feedstick-service-func123.azurewebsites.net/api";
-
-// 2. Service untuk LIKE Video (Uploadvid - karena tadi kita taruh fungsi Like di sini)
 const UPLOAD_SERVICE_URL = "https://uploadvid-service-func-123.azurewebsites.net/api";
-
-// API Key (Jika Feedstick pakai Auth Level Function, ganti key ini dengan key Feedstick)
 const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
@@ -69,11 +72,68 @@ export default defineComponent({
     return {
       videos: [] as any[],
       loading: true,
+      // Array untuk menyimpan elemen video fisik agar bisa dikontrol scroll
+      videoRefs: [] as HTMLVideoElement[],
+      observer: null as IntersectionObserver | null
     };
   },
+
+  // Reset refs sebelum update agar list tetap bersih
+  beforeUpdate() {
+    this.videoRefs = [];
+  },
+
   methods: {
+    handleLogout() {
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('username');
+      alert("Anda telah logout.");
+      this.$router.push('/login');
+    },
+
     refreshHome() {
       window.location.reload();
+    },
+
+    // Fitur Klik Video: Play/Pause
+    togglePlay(event: any) {
+      const video = event.target as HTMLVideoElement;
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    },
+
+    // --- LOGIKA SCROLL OTOMATIS (Intersection Observer) ---
+    setupIntersectionObserver() {
+      const options = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.6 // Video akan play jika 60% terlihat di layar
+      };
+
+      this.observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target as HTMLVideoElement;
+
+          if (entry.isIntersecting) {
+            // MASUK LAYAR -> PLAY
+            // Kita gunakan .catch karena browser memblokir autoplay bersuara
+            // jika user belum pernah klik layar sama sekali.
+            video.play().catch(e => console.log("Menunggu interaksi user untuk play suara..."));
+          } else {
+            // KELUAR LAYAR -> PAUSE & RESET
+            video.pause();
+            video.currentTime = 0; // Reset ke detik 0
+          }
+        });
+      }, options);
+
+      // Pasang "CCTV" (Observer) ke setiap video
+      this.videoRefs.forEach((videoEl) => {
+        if (videoEl) this.observer?.observe(videoEl);
+      });
     },
 
     async handleLike(video: any) {
@@ -84,7 +144,7 @@ export default defineComponent({
         return;
       }
 
-      // Optimistic Update
+      // Optimistic Update UI
       const originalLikes = video.likes;
       const wasLiked = video.likedByMe;
 
@@ -97,7 +157,6 @@ export default defineComponent({
       }
 
       try {
-        // PERHATIKAN: Like dikirim ke UPLOAD_SERVICE_URL
         await axios.post(`${UPLOAD_SERVICE_URL}/likeVideo?code=${API_KEY}`, {
           videoId: video.id,
           userId: myUserId
@@ -115,21 +174,30 @@ export default defineComponent({
     const myUserId = localStorage.getItem('username');
 
     try {
-      // PERHATIKAN: Fetch data dari FEED_SERVICE_URL
       const res = await axios.get(`${FEED_SERVICE_URL}/videos?code=${API_KEY}`);
       const metadataList = res.data.videos;
 
       this.videos = metadataList.map((v: any) => ({
           ...v,
-          // Video source juga dari Feedstick
           videoSrc: `${FEED_SERVICE_URL}/video/${v.fileName}?code=${API_KEY}`,
           likedByMe: v.likedBy && myUserId ? v.likedBy.includes(myUserId) : false
       }));
+
+      // Tunggu DOM selesai dirender Vue, baru jalankan Observer scroll
+      this.$nextTick(() => {
+        this.setupIntersectionObserver();
+      });
 
     } catch (err) {
       console.error("Gagal fetch videos:", err);
     } finally {
       this.loading = false;
+    }
+  },
+
+  unmounted() {
+    if (this.observer) {
+      this.observer.disconnect();
     }
   }
 });
@@ -148,25 +216,46 @@ export default defineComponent({
   overflow: hidden;
   font-family: sans-serif;
 }
+
+/* LOGOUT BUTTON */
+.logout-btn {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 999;
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 15px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
 /* FEED & VIDEO */
 .feed {
   height: 100vh;
   overflow-y: scroll;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y mandatory; /* Kunci scroll agar pas per video */
 }
 
 .video-wrapper {
   position: relative;
   height: 100vh;
   width: 100%;
-  scroll-snap-align: start;
+  scroll-snap-align: start; /* Kunci posisi start */
   background: black;
+  display: flex;
+  align-items: center; /* Center video vertikal jika ukuran beda */
+  justify-content: center;
 }
 
 .video-player {
   height: 100%;
   width: 100%;
-  object-fit: contain;
+  object-fit: contain; /* Agar video tidak gepeng */
+  cursor: pointer;
 }
 
 /* CAPTION AREA */
@@ -177,13 +266,14 @@ export default defineComponent({
   right: 60px;
   z-index: 10;
   text-align: left;
+  /* Shadow agar teks terbaca di video terang */
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 .caption .username {
   font-weight: bold;
   font-size: 16px;
   margin-bottom: 5px;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 .caption .desc {
@@ -191,7 +281,6 @@ export default defineComponent({
   opacity: 0.9;
   margin-bottom: 10px;
   line-height: 1.4;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
 /* LIKE BUTTON */
