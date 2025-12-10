@@ -9,13 +9,16 @@
     <div v-else-if="!videos.length" class="loading-state">Belum ada video diunggah.</div>
 
     <div v-else class="feed">
-      <div v-for="(v) in videos" :key="v.id" class="video-wrapper">
+      <div v-for="(v, index) in videos" :key="v.id" class="video-wrapper">
+
         <video
+          :ref="(el) => { if(el) videoRefs[index] = el }"
           :src="v.videoSrc"
           class="video-player"
-          autoplay muted loop playsinline
+          loop
+          playsinline
+          @click="togglePlay($event)"
         ></video>
-
         <div class="caption">
           <p class="username">@{{ v.username || v.uploaderId }}</p>
           <p class="desc">{{ v.caption || 'Tidak ada caption' }}</p>
@@ -57,15 +60,9 @@
 import axios from "axios";
 import { defineComponent } from "vue";
 
-// --- KONFIGURASI URL (PENTING!) ---
-
-// 1. Service untuk MENGAMBIL Video (Feedstick)
+// URL SERVICE
 const FEED_SERVICE_URL = "https://feedstick-service-func123.azurewebsites.net/api";
-
-// 2. Service untuk LIKE Video (Uploadvid - karena tadi kita taruh fungsi Like di sini)
 const UPLOAD_SERVICE_URL = "https://uploadvid-service-func-123.azurewebsites.net/api";
-
-// API Key (Jika Feedstick pakai Auth Level Function, ganti key ini dengan key Feedstick)
 const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
@@ -74,8 +71,17 @@ export default defineComponent({
     return {
       videos: [] as any[],
       loading: true,
+      // Array untuk menyimpan elemen video fisik (DOM)
+      videoRefs: [] as HTMLVideoElement[],
+      observer: null as IntersectionObserver | null
     };
   },
+
+  // Reset refs sebelum update agar tidak duplikat
+  beforeUpdate() {
+    this.videoRefs = [];
+  },
+
   methods: {
     handleLogout() {
       localStorage.removeItem('user_id');
@@ -88,6 +94,16 @@ export default defineComponent({
       window.location.reload();
     },
 
+    // Fitur Klik Video untuk Play/Pause Manual
+    togglePlay(event: any) {
+      const video = event.target;
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    },
+
     async handleLike(video: any) {
       const myUserId = localStorage.getItem('username');
       if (!myUserId) {
@@ -95,8 +111,6 @@ export default defineComponent({
         this.$router.push('/login');
         return;
       }
-
-      // Optimistic Update
       const originalLikes = video.likes;
       const wasLiked = video.likedByMe;
 
@@ -109,7 +123,6 @@ export default defineComponent({
       }
 
       try {
-        // PERHATIKAN: Like dikirim ke UPLOAD_SERVICE_URL
         await axios.post(`${UPLOAD_SERVICE_URL}/likeVideo?code=${API_KEY}`, {
           videoId: video.id,
           userId: myUserId
@@ -120,6 +133,37 @@ export default defineComponent({
         video.likedByMe = wasLiked;
         alert("Gagal melakukan like.");
       }
+    },
+
+    // --- LOGIKA SCROLL TIKTOK STYLE ---
+    setupIntersectionObserver() {
+      // Opsi: Threshold 0.6 artinya video akan play jika 60% terlihat di layar
+      const options = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.6
+      };
+
+      this.observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target as HTMLVideoElement;
+
+          if (entry.isIntersecting) {
+            // JIKA MASUK LAYAR -> PLAY
+            // Kita bungkus try-catch karena browser kadang blokir auto-play suara
+            video.play().catch(e => console.log("Autoplay blocked (klik layar dulu):", e));
+          } else {
+            // JIKA KELUAR LAYAR -> PAUSE & RESET WAKTU
+            video.pause();
+            video.currentTime = 0; // Reset ke awal biar pas balik mulai dari 0
+          }
+        });
+      }, options);
+
+      // Pasang observer ke semua video yang sudah dirender
+      this.videoRefs.forEach((videoEl) => {
+        if (videoEl) this.observer?.observe(videoEl);
+      });
     }
   },
 
@@ -127,21 +171,31 @@ export default defineComponent({
     const myUserId = localStorage.getItem('username');
 
     try {
-      // PERHATIKAN: Fetch data dari FEED_SERVICE_URL
       const res = await axios.get(`${FEED_SERVICE_URL}/videos?code=${API_KEY}`);
       const metadataList = res.data.videos;
 
       this.videos = metadataList.map((v: any) => ({
           ...v,
-          // Video source juga dari Feedstick
           videoSrc: `${FEED_SERVICE_URL}/video/${v.fileName}?code=${API_KEY}`,
           likedByMe: v.likedBy && myUserId ? v.likedBy.includes(myUserId) : false
       }));
+
+      // PENTING: Tunggu DOM selesai dirender Vue, baru pasang Observer
+      this.$nextTick(() => {
+        this.setupIntersectionObserver();
+      });
 
     } catch (err) {
       console.error("Gagal fetch videos:", err);
     } finally {
       this.loading = false;
+    }
+  },
+
+  // Bersihkan observer saat pindah halaman (biar tidak memori leak)
+  unmounted() {
+    if (this.observer) {
+      this.observer.disconnect();
     }
   }
 });
@@ -161,7 +215,6 @@ export default defineComponent({
   font-family: sans-serif;
 }
 
-/* LOGOUT BUTTON */
 .logout-btn {
   position: fixed;
   top: 15px;
@@ -177,7 +230,6 @@ export default defineComponent({
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
-/* FEED & VIDEO */
 .feed {
   height: 100vh;
   overflow-y: scroll;
@@ -190,15 +242,17 @@ export default defineComponent({
   width: 100%;
   scroll-snap-align: start;
   background: black;
+  display: flex;       /* Tambahan agar video center vertikal */
+  align-items: center; /* Tambahan agar video center vertikal */
 }
 
 .video-player {
   height: 100%;
   width: 100%;
   object-fit: contain;
+  cursor: pointer; /* Agar user tahu bisa diklik */
 }
 
-/* CAPTION AREA */
 .caption {
   position: absolute;
   bottom: 80px;
@@ -223,7 +277,6 @@ export default defineComponent({
   text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
-/* LIKE BUTTON */
 .like-btn {
   display: inline-flex;
   flex-direction: column;
@@ -256,7 +309,6 @@ export default defineComponent({
   transform: scale(1.1);
 }
 
-/* NAVIGASI BAWAH */
 .bottom-nav {
   position: fixed;
   bottom: 0;
