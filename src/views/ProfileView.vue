@@ -2,47 +2,41 @@
   <div class="profile-container">
 
     <div class="profile-header">
-        <button class="logout-btn" @click="handleLogout">
-          Logout 🚪
-        </button>
+        <button class="logout-btn" @click="handleLogout">Logout 🚪</button>
+
         <div class="user-info">
             <div class="avatar">👤</div>
             <h2 class="username">@{{ currentUsername }}</h2>
             <p class="stats">
-                <span>{{ uploadedVideos.length }} Uploads</span> |
-                <span>{{ likedVideos.length }} Likes</span>
+                <span>{{ myUploads.length }} Uploads</span> |
+                <span>{{ myLikes.length }} Likes</span>
             </p>
         </div>
 
         <div class="profile-tabs">
-            <div
-                class="tab"
-                :class="{ active: currentTab === 'uploads' }"
-                @click="currentTab = 'uploads'"
-            >
+            <div class="tab" :class="{ active: currentTab === 'uploads' }" @click="currentTab = 'uploads'">
                 Video Anda
             </div>
-            <div
-                class="tab"
-                :class="{ active: currentTab === 'likes' }"
-                @click="currentTab = 'likes'"
-            >
+            <div class="tab" :class="{ active: currentTab === 'likes' }" @click="currentTab = 'likes'">
                 Disukai
             </div>
         </div>
     </div>
 
-    <div v-if="loading" class="loading-state">Memuat data profil... ⏳</div>
-    <div v-else class="content-area">
+    <div v-if="loading" class="loading-state">Memuat data... ⏳</div>
 
+    <div v-else class="content-area">
         <div v-if="displayedVideos.length" class="video-grid">
             <div
                 v-for="(v) in displayedVideos"
                 :key="v.id"
                 class="video-thumbnail"
-                @click="viewVideo(v.id)"
+                @click="goToDetail(v.id)"
             >
-                <img :src="getThumbnailUrl(v)" :alt="'Thumbnail ' + v.id" class="thumbnail-img"/>
+                <div class="thumb-color" :style="{ backgroundColor: getHashColor(v.id) }">
+                   <span class="play-icon">▶️</span>
+                </div>
+
                 <div class="thumbnail-overlay">
                     <span>❤️ {{ v.likes }}</span>
                 </div>
@@ -50,7 +44,8 @@
         </div>
 
         <div v-else class="empty-state">
-            Tidak ada konten di bagian ini.
+            <p v-if="currentTab === 'uploads'">Anda belum mengupload video.</p>
+            <p v-else>Anda belum menyukai video apapun.</p>
         </div>
     </div>
 
@@ -60,9 +55,7 @@
             <span class="label">Home</span>
         </div>
         <div class="item upload-container" @click="$router.push('/upload')">
-            <div class="upload-btn">
-                <span>➕</span>
-            </div>
+            <div class="upload-btn"><span>➕</span></div>
         </div>
         <div class="item active">
             <span class="icon">👤</span>
@@ -75,84 +68,86 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import axios from "axios";
 
-// --- DATA DUMMY ---
-const videosDummy = {
-    uploads: [
-        { id: 'u1', likes: 125, fileName: 'v1.mp4', category: 'nature' },
-        { id: 'u2', likes: 450, fileName: 'v2.mp4', category: 'travel' },
-        { id: 'u3', likes: 23, fileName: 'v3.mp4', category: 'food' },
-        { id: 'u4', likes: 99, fileName: 'v4.mp4', category: 'music' },
-        { id: 'u5', likes: 1200, fileName: 'v5.mp4', category: 'dance' },
-        { id: 'u6', likes: 80, fileName: 'v6.mp4', category: 'nature' },
-    ],
-    likes: [
-        { id: 'l1', likes: 500, fileName: 'l1.mp4', category: 'comedy' },
-        { id: 'l2', likes: 15, fileName: 'l2.mp4', category: 'pets' },
-        { id: 'l3', likes: 88, fileName: 'l3.mp4', category: 'vlog' },
-        { id: 'l4', likes: 120, fileName: 'l4.mp4', category: 'travel' },
-    ]
-};
+// Config URL
+const FEED_SERVICE_URL = "https://feedstick-service-func123.azurewebsites.net/api";
+const API_KEY = "EUKUzAPKrmwP_OA4VxZG3CiVs_TCpqY-_RfIFbIX81jdAzFu0vWVLQ==";
 
 export default defineComponent({
-  name: "ProfileView",
-  data() {
-    return {
-      uploadedVideos: [] as any[],
-      likedVideos: [] as any[],
-      loading: true,
-      currentTab: 'uploads' as 'uploads' | 'likes',
-      currentUsername: localStorage.getItem('username') || 'Tamu_Dummy',
-    };
-  },
-
-    computed: {
-        displayedVideos(): any[] {
-            return this.currentTab === 'uploads' ? this.uploadedVideos : this.likedVideos;
-        }
+  name: "ProfileView",
+  data() {
+    return {
+      allVideos: [] as any[],
+      loading: true,
+      currentTab: 'uploads' as 'uploads' | 'likes',
+      currentUsername: localStorage.getItem('username') || '',
+    };
+  },
+  computed: {
+    // Filter Video Upload Saya
+    myUploads(): any[] {
+        return this.allVideos.filter(v => {
+            const owner = v.username || v.uploaderId;
+            return owner === this.currentUsername;
+        });
     },
-
-  methods: {
-    handleLogout() {
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('username');
-      alert("Anda telah logout.");
-      this.$router.push('/login');
-    },
-
-    getThumbnailUrl(video: any): string {
-        // Menggunakan layanan placeholder image gratis
-        // Warna latar belakang thumbnail diubah berdasarkan hash ID video
-        const hash = video.id.charCodeAt(0) * 10;
-        const color = hash % 0xFFFFFF;
-
-        return `https://via.placeholder.com/150x200/${color.toString(16)}/FFFFFF?text=VID-${video.id}`;
+    // Filter Video yang Saya Like
+    myLikes(): any[] {
+        return this.allVideos.filter(v => {
+            return v.likedBy && v.likedBy.includes(this.currentUsername);
+        });
     },
-
-    viewVideo(videoId: string) {
-        // Logika untuk navigasi ke detail video (gunakan Vue Router)
-        alert(`Melihat detail video ID: ${videoId}`);
-        // this.$router.push(`/video/${videoId}`);
-    },
-
-    loadDummyData() {
-        this.loading = true;
-        // Simulasi penundaan jaringan
-        setTimeout(() => {
-            this.uploadedVideos = videosDummy.uploads;
-            this.likedVideos = videosDummy.likes;
-            this.loading = false;
-        }, 500);
+    // Tentukan mana yang ditampilkan berdasarkan Tab
+    displayedVideos(): any[] {
+        return this.currentTab === 'uploads' ? this.myUploads : this.myLikes;
     }
-  },
-  mounted() {
-    this.loadDummyData();
-  }
+  },
+  methods: {
+    handleLogout() {
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('username');
+      this.$router.push('/login');
+    },
+
+    goToDetail(id: string) {
+        // Arahkan ke halaman detail
+        this.$router.push(`/video/${id}`);
+    },
+
+    getHashColor(str: string) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return '#' + "00000".substring(0, 6 - c.length) + c;
+    },
+
+    async fetchData() {
+        this.loading = true;
+        try {
+            const res = await axios.get(`${FEED_SERVICE_URL}/videos?code=${API_KEY}`);
+            this.allVideos = res.data.videos;
+        } catch (e) {
+            console.error("Gagal ambil data profile:", e);
+        } finally {
+            this.loading = false;
+        }
+    }
+  },
+  mounted() {
+    if (!this.currentUsername) {
+        alert("Harap login dulu");
+        this.$router.push('/login');
+    } else {
+        this.fetchData();
+    }
+  }
 });
 </script>
 
 <style scoped>
-/* GANTI .app menjadi .profile-container */
 .profile-container {
     background: black;
     color: white;
@@ -165,139 +160,94 @@ export default defineComponent({
     font-family: sans-serif;
 }
 
-/* HEADER PROFIL */
 .profile-header {
-    background: black;
+    background: #111;
     padding: 20px 0 0;
     text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-}
-
-.user-info {
-    margin-bottom: 20px;
 }
 
 .avatar {
     font-size: 50px;
-    background: #444;
+    background: #333;
     border-radius: 50%;
     width: 80px;
     height: 80px;
     line-height: 80px;
     margin: 0 auto 10px;
-    border: 3px solid #666;
+    border: 2px solid #555;
 }
 
-.username {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
+.username { margin-bottom: 5px; }
+.stats span { color: #aaa; font-size: 14px; margin: 0 5px; }
 
-.stats span {
-    color: #aaa;
-    font-size: 14px;
-}
-
-/* TAB NAVIGASI */
 .profile-tabs {
     display: flex;
     justify-content: space-around;
-    border-top: 1px solid #222;
-    border-bottom: 1px solid #222;
-    background: #111;
+    margin-top: 15px;
+    border-bottom: 1px solid #333;
 }
 
-.profile-tabs .tab {
+.tab {
     padding: 10px 0;
-    flex-grow: 1;
+    flex: 1;
+    text-align: center;
     cursor: pointer;
-    font-weight: 500;
-    color: #888;
-    position: relative;
-    transition: color 0.2s;
+    color: #666;
+    font-weight: bold;
 }
+.tab.active { color: white; border-bottom: 2px solid white; }
 
-.profile-tabs .tab.active {
-    color: white;
-}
-
-.profile-tabs .tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 10%;
-    width: 80%;
-    height: 3px;
-    background-color: white;
-}
-
-/* KONTEN UTAMA & GRID */
 .content-area {
-    /* Tinggi konten = Total viewport - Tinggi Nav Bawah (60px) - Tinggi Header Profil (~160px) */
-    height: calc(100vh - 60px - 160px);
-    overflow-y: scroll;
-    background: #111;
-    padding-bottom: 10px;
+    height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding: 2px;
 }
 
 .video-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
+    gap: 2px;
 }
 
 .video-thumbnail {
-    aspect-ratio: 3 / 4;
+    aspect-ratio: 3/4;
     position: relative;
-    overflow: hidden;
-    background: #222;
     cursor: pointer;
+    background: #222;
 }
 
-.thumbnail-img {
+.thumb-color {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
 }
 
 .thumbnail-overlay {
     position: absolute;
     bottom: 5px;
-    right: 5px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 2px 5px;
-    border-radius: 5px;
+    left: 5px;
     font-size: 12px;
     font-weight: bold;
+    text-shadow: 1px 1px 2px black;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 50px 20px;
-    color: #666;
-}
-
-/* LOGOUT BUTTON */
 .logout-btn {
     position: absolute;
-    top: 15px;
-    right: 15px;
-    z-index: 60;
-    background-color: #ff4d4d;
-    color: white;
+    top: 10px;
+    right: 10px;
+    background: #ff3b30;
     border: none;
-    border-radius: 20px;
-    padding: 8px 15px;
-    font-weight: bold;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    font-size: 12px;
 }
 
-/* BOTTOM NAV */
+/* Navigasi Bawah & Lainnya sama seperti HomeView */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -313,48 +263,24 @@ export default defineComponent({
     align-items: center;
     z-index: 100;
 }
-
 .bottom-nav .item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     cursor: pointer;
     color: #666;
     width: 50px;
 }
-
-.bottom-nav .item.active {
-    color: #fff;
-}
-
-.upload-container {
-    transform: translateY(-5px);
-}
+.bottom-nav .item.active { color: white; }
 .upload-btn {
-    width: 45px;
-    height: 30px;
+    width: 45px; height: 30px;
     background: linear-gradient(90deg, #00f2ea, #ff0050);
     border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
+    display: flex; align-items: center; justify-content: center;
 }
-.upload-btn span {
-    color: black;
-    font-weight: 900;
-    font-size: 18px;
-    line-height: 1;
-}
-
-.loading-state {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 18px;
-    z-index: 30;
+.loading-state, .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #777;
 }
 </style>

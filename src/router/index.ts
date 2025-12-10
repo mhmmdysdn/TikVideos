@@ -4,6 +4,7 @@ import UploadView from '../views/UploadView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import VideoDetailView from '../views/VideoDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,6 +37,16 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: RegisterView,
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue')
+    },
+    {
+      path: '/video/:id', // :id adalah parameter dinamis
+      name: 'video-detail',
+      component: VideoDetailView,
     },
   ],
 })
